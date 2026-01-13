@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import type { GameState, Answer } from '@shared/types';
-import { socketService } from '@/lib/socket';
+import { useEffect, useState, useRef } from "react";
+import type { GameState, Answer } from "@shared/types";
+import { socketService } from "@/lib/socket";
 
 interface PlayerPageProps {
   gameCode: string;
@@ -18,70 +18,88 @@ interface PlayerPageProps {
  */
 export default function PlayerPage({ gameCode }: PlayerPageProps) {
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [playerName, setPlayerName] = useState('');
+  const [playerName, setPlayerName] = useState("");
   const [joined, setJoined] = useState(false);
-  const [songGuess, setSongGuess] = useState('');
-  const [albumGuess, setAlbumGuess] = useState('');
+  const [songGuess, setSongGuess] = useState("");
+  const [albumGuess, setAlbumGuess] = useState("");
   const [hasSubmitted, setHasSubmitted] = useState(false);
-  const [myAnswer, setMyAnswer] = useState<Answer | null>(null);
+  const lastRoundNumber = useRef(0);
 
   // Check for saved session
   useEffect(() => {
-    const savedSession = localStorage.getItem('trackmaster_session');
+    const savedSession = localStorage.getItem("trackmaster_session");
     if (savedSession) {
       try {
         const session = JSON.parse(savedSession);
-        if (session.gameCode === gameCode && Date.now() - session.timestamp < 2 * 60 * 60 * 1000) {
+        if (
+          session.gameCode === gameCode &&
+          Date.now() - session.timestamp < 2 * 60 * 60 * 1000
+        ) {
           // Attempt reconnection
-          socketService.emit('reconnectPlayer', {
+          socketService.emit("reconnectPlayer", {
             gameCode,
-            persistentId: session.persistentId
+            persistentId: session.persistentId,
           });
         }
       } catch (error) {
-        console.error('Failed to parse saved session:', error);
+        console.error("Failed to parse saved session:", error);
       }
     }
   }, [gameCode]);
 
   // Socket event listeners
   useEffect(() => {
-    socketService.on('gameStateUpdate', (state) => {
+    socketService.on("gameStateUpdate", (state) => {
+      console.log(
+        "State update - Round:",
+        state.roundNumber,
+        "Last:",
+        lastRoundNumber.current,
+        "Phase:",
+        state.phase,
+      );
+
       setGameState(state);
 
       // Find my answer in current round
-      if (state.phase === 'playing' || state.phase === 'reveal') {
+      if (state.phase === "playing" || state.phase === "reveal") {
         const me = state.players.find((p) => p.name === playerName);
         if (me) {
-          setHasSubmitted(me.hasAnswered);
-          setMyAnswer(me.currentAnswer || null);
+          // Only update hasSubmitted if it actually changed
+          if (me.hasAnswered !== hasSubmitted) {
+            setHasSubmitted(me.hasAnswered);
+          }
         }
       }
 
-      // Reset form on new round
-      if (state.phase === 'playing' && state.roundStartTime) {
-        setSongGuess('');
-        setAlbumGuess('');
+      // Reset form only when a NEW round starts (round number changed)
+      if (
+        state.phase === "playing" &&
+        state.roundNumber !== lastRoundNumber.current
+      ) {
+        console.log("NEW ROUND - Resetting form");
+        lastRoundNumber.current = state.roundNumber;
+        setSongGuess("");
+        setAlbumGuess("");
         setHasSubmitted(false);
-        setMyAnswer(null);
       }
     });
 
-    socketService.on('playerReconnected', ({ success, playerName: name }) => {
+    socketService.on("playerReconnected", ({ success, playerName: name }) => {
       if (success) {
         setPlayerName(name);
         setJoined(true);
       }
     });
 
-    socketService.on('error', (message) => {
+    socketService.on("error", (message) => {
       alert(message);
     });
 
     return () => {
-      socketService.off('gameStateUpdate');
-      socketService.off('playerReconnected');
-      socketService.off('error');
+      socketService.off("gameStateUpdate");
+      socketService.off("playerReconnected");
+      socketService.off("error");
     };
   }, [playerName]);
 
@@ -90,21 +108,21 @@ export default function PlayerPage({ gameCode }: PlayerPageProps) {
     e.preventDefault();
     if (!playerName.trim()) return;
 
-    socketService.emit('joinGame', {
+    socketService.emit("joinGame", {
       gameCode,
-      playerName: playerName.trim()
+      playerName: playerName.trim(),
     });
 
     // Save session for reconnection
     const persistentId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     localStorage.setItem(
-      'trackmaster_session',
+      "trackmaster_session",
       JSON.stringify({
         gameCode,
         playerName: playerName.trim(),
         persistentId,
-        timestamp: Date.now()
-      })
+        timestamp: Date.now(),
+      }),
     );
 
     setJoined(true);
@@ -113,12 +131,12 @@ export default function PlayerPage({ gameCode }: PlayerPageProps) {
   // Submit answer
   const handleSubmitAnswer = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!songGuess.trim() || !albumGuess.trim()) return;
+    if (!songGuess.trim()) return; // Only require song
 
-    socketService.emit('submitAnswer', {
+    socketService.emit("submitAnswer", {
       gameCode,
       songGuess: songGuess.trim(),
-      albumGuess: albumGuess.trim()
+      albumGuess: albumGuess.trim() || "", // Send empty string if no album
     });
 
     setHasSubmitted(true);
@@ -132,11 +150,12 @@ export default function PlayerPage({ gameCode }: PlayerPageProps) {
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-md w-full space-y-6">
           <div className="text-center">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
-              TrackMaster
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-cyber-cyan via-cyber-magenta to-cyber-purple bg-clip-text text-transparent glow-cyan-text mb-2 font-mono animate-neon-pulse">
+              TRACKMASTER
             </h1>
-            <p className="text-xl text-gray-300">
-              Join Game: <span className="font-mono text-purple-400">{gameCode}</span>
+            <p className="text-xl text-cyber-cyan/80 font-mono">
+              JOIN_GAME:{" "}
+              <span className="font-mono text-cyber-magenta glow-magenta-text">[{gameCode}]</span>
             </p>
           </div>
 
@@ -146,8 +165,8 @@ export default function PlayerPage({ gameCode }: PlayerPageProps) {
                 type="text"
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="Enter your name"
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-center text-lg"
+                placeholder="ENTER_YOUR_NAME..."
+                className="w-full px-4 py-3 bg-dark-space/50 neon-border-cyan rounded-lg focus:outline-none focus:ring-2 focus:ring-cyber-cyan focus:glow-cyan text-center text-lg text-cyber-cyan placeholder:text-cyber-cyan/30 font-mono"
                 maxLength={20}
                 autoFocus
               />
@@ -156,9 +175,9 @@ export default function PlayerPage({ gameCode }: PlayerPageProps) {
             <button
               type="submit"
               disabled={!playerName.trim()}
-              className="w-full py-4 px-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl font-semibold text-lg hover:from-purple-600 hover:to-pink-600 transition-all transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-4 px-6 bg-gradient-to-r from-cyber-cyan to-cyber-magenta rounded-xl font-semibold text-lg font-mono hover:from-cyber-magenta hover:to-cyber-purple transition-all transform hover:scale-105 shadow-lg neon-border-cyan hover:glow-cyan disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Join Game
+              JOIN_GAME &gt;&gt;
             </button>
           </form>
         </div>
@@ -167,106 +186,139 @@ export default function PlayerPage({ gameCode }: PlayerPageProps) {
   }
 
   // Lobby (waiting for game to start)
-  if (gameState?.phase === 'lobby' || gameState?.phase === 'setup') {
+  if (gameState?.phase === "lobby" || gameState?.phase === "setup") {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center space-y-6">
-          <div className="text-6xl mb-4 animate-bounce">🎵</div>
-          <h2 className="text-3xl font-bold">Welcome, {playerName}!</h2>
+          <div className="waveform mb-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="waveform-bar" />
+            ))}
+          </div>
+          <h2 className="text-3xl font-bold text-cyber-cyan font-mono">
+            WELCOME, {playerName.toUpperCase()}!
+          </h2>
           {gameState.artistName ? (
-            <p className="text-xl text-gray-300">
-              Get ready to guess songs by <span className="text-purple-400 font-semibold">{gameState.artistName}</span>
+            <p className="text-xl text-cyber-cyan/80 font-mono">
+              PREPARE_TO_GUESS_SONGS_BY{" "}
+              <span className="text-cyber-magenta font-semibold glow-magenta-text">
+                {gameState.artistName.toUpperCase()}
+              </span>
             </p>
           ) : (
-            <p className="text-xl text-gray-300">Waiting for master to select artist...</p>
+            <p className="text-xl text-cyber-cyan/80 font-mono">
+              WAITING_FOR_MASTER_TO_SELECT_ARTIST...
+            </p>
           )}
 
-          <div className="bg-white/10 border border-white/20 rounded-xl p-6">
-            <h3 className="font-semibold mb-4">Players in lobby:</h3>
+          <div className="holo-card neon-border-cyan rounded-xl p-6">
+            <h3 className="font-semibold mb-4 text-cyber-magenta font-mono">
+              PLAYERS_IN_LOBBY:
+            </h3>
             <div className="space-y-2">
               {gameState.players.map((player) => (
                 <div
                   key={player.id}
-                  className={`px-4 py-2 rounded-lg ${
+                  className={`px-4 py-2 rounded-lg font-mono ${
                     player.name === playerName
-                      ? 'bg-purple-500/30 border border-purple-500/50'
-                      : 'bg-white/5'
+                      ? "bg-cyber-cyan/30 neon-border-cyan glow-cyan text-cyber-cyan"
+                      : "bg-dark-space/50 text-cyber-cyan/70"
                   }`}
                 >
-                  {player.name} {player.name === playerName && '(You)'}
+                  &gt; {player.name.toUpperCase()} {player.name === playerName && "[YOU]"}
                 </div>
               ))}
             </div>
           </div>
 
-          <p className="text-sm text-gray-400">Waiting for master to start the game...</p>
+          <p className="text-sm text-cyber-cyan/50 font-mono animate-pulse">
+            WAITING_FOR_MASTER_TO_START...
+          </p>
         </div>
       </div>
     );
   }
 
   // Playing (submit answers)
-  if (gameState?.phase === 'playing') {
+  if (gameState?.phase === "playing") {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-md w-full space-y-6">
           <div className="text-center">
-            <div className="text-5xl mb-4">🎵</div>
-            <h2 className="text-2xl font-bold mb-2">
-              Round {gameState.roundNumber} / {gameState.songs.length}
+            <div className="waveform mb-4">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="waveform-bar" />
+              ))}
+            </div>
+            <h2 className="text-2xl font-bold mb-2 text-cyber-cyan font-mono">
+              ROUND [{gameState.roundNumber} / {gameState.songs.length}]
             </h2>
-            <div className="text-3xl font-mono text-purple-400">
-              {Math.max(0, Math.floor(((gameState.roundStartTime || 0) + 60000 - Date.now()) / 1000))}s
+            <div className="text-3xl font-mono text-cyber-orange glow-orange-text animate-pulse">
+              {Math.max(
+                0,
+                Math.floor(
+                  ((gameState.roundStartTime || 0) + 60000 - Date.now()) / 1000,
+                ),
+              )}
+              s
             </div>
           </div>
 
           {!hasSubmitted ? (
             <form onSubmit={handleSubmitAnswer} className="space-y-4">
-              <div className="bg-white/10 border border-white/20 rounded-xl p-6 space-y-4">
+              <div className="holo-card neon-border-cyan rounded-xl p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold mb-2 text-gray-300">Song Name</label>
+                  <label className="block text-sm font-semibold mb-2 text-cyber-cyan font-mono">
+                    SONG_NAME:
+                  </label>
                   <input
                     type="text"
                     value={songGuess}
                     onChange={(e) => setSongGuess(e.target.value)}
-                    placeholder="Enter song name..."
-                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="ENTER_SONG_NAME..."
+                    className="w-full px-4 py-3 bg-dark-space/50 neon-border-cyan rounded-lg focus:outline-none focus:ring-2 focus:ring-cyber-cyan focus:glow-cyan text-cyber-cyan placeholder:text-cyber-cyan/30 font-mono"
                     autoFocus
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold mb-2 text-gray-300">Album Name</label>
+                  <label className="block text-sm font-semibold mb-2 text-cyber-cyan font-mono">
+                    ALBUM_NAME:
+                  </label>
                   <input
                     type="text"
                     value={albumGuess}
                     onChange={(e) => setAlbumGuess(e.target.value)}
-                    placeholder="Enter album name..."
-                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="ENTER_ALBUM_NAME... [OPTIONAL]"
+                    className="w-full px-4 py-3 bg-dark-space/50 neon-border-cyan rounded-lg focus:outline-none focus:ring-2 focus:ring-cyber-cyan focus:glow-cyan text-cyber-cyan placeholder:text-cyber-cyan/30 font-mono"
                   />
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={!songGuess.trim() || !albumGuess.trim()}
-                className="w-full py-4 px-6 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl font-semibold text-lg hover:from-green-600 hover:to-emerald-600 transition-all transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!songGuess.trim()}
+                className="w-full py-4 px-6 bg-gradient-to-r from-cyber-green to-cyber-cyan rounded-xl font-semibold text-lg font-mono hover:from-cyber-cyan hover:to-cyber-green transition-all transform hover:scale-105 shadow-lg neon-border-cyan hover:glow-green disabled:opacity-50 disabled:cursor-not-allowed text-dark-void"
               >
-                Submit Answer
+                SUBMIT_ANSWER &gt;&gt;
               </button>
             </form>
           ) : (
-            <div className="bg-green-500/20 border border-green-500/50 rounded-xl p-8 text-center">
-              <div className="text-6xl mb-4">✓</div>
-              <h3 className="text-2xl font-bold mb-2">Answer Submitted!</h3>
-              <p className="text-gray-300">Waiting for other players...</p>
+            <div className="holo-card neon-border-cyan rounded-xl p-8 text-center glow-green">
+              <div className="text-6xl mb-4 text-cyber-green glow-green-text">✓</div>
+              <h3 className="text-2xl font-bold mb-2 text-cyber-green font-mono">
+                ANSWER_SUBMITTED!
+              </h3>
+              <p className="text-cyber-cyan/70 font-mono">WAITING_FOR_OTHER_PLAYERS...</p>
             </div>
           )}
 
           {/* Personal Score */}
-          <div className="bg-white/10 border border-white/20 rounded-xl p-4 flex items-center justify-between">
-            <span className="font-semibold">Your Score:</span>
-            <span className="text-3xl font-bold text-purple-400">{myPlayer?.score || 0}</span>
+          <div className="holo-card neon-border-magenta rounded-xl p-4 flex items-center justify-between">
+            <span className="font-semibold text-cyber-magenta font-mono">YOUR_SCORE:</span>
+            <span className="text-3xl font-bold text-cyber-magenta glow-magenta-text">
+              {myPlayer?.score || 0}
+            </span>
           </div>
         </div>
       </div>
@@ -274,115 +326,163 @@ export default function PlayerPage({ gameCode }: PlayerPageProps) {
   }
 
   // Reveal (show results)
-  if (gameState?.phase === 'reveal') {
-    const myResult = gameState.roundAnswers.find((a) => a.playerName === playerName);
+  if (gameState?.phase === "reveal") {
+    const myResult = gameState.roundAnswers.find(
+      (a) => a.playerName === playerName,
+    );
 
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-md w-full space-y-6">
           <div className="text-center">
-            <h2 className="text-2xl font-bold mb-4">Round Results</h2>
+            <h2 className="text-2xl font-bold mb-4 text-cyber-cyan font-mono">
+              &gt; ROUND_RESULTS
+            </h2>
           </div>
 
           {/* Correct Answer */}
-          <div className="bg-green-500/20 border border-green-500/50 rounded-xl p-4">
-            <h3 className="font-semibold mb-2 text-sm text-gray-300">Correct Answer:</h3>
+          <div className="holo-card neon-border-cyan rounded-xl p-4 glow-green">
+            <h3 className="font-semibold mb-2 text-sm text-cyber-green/70 font-mono">
+              CORRECT_ANSWER:
+            </h3>
             <div className="space-y-1">
-              <div className="text-lg">
-                <strong>Song:</strong> {gameState.currentSong?.name}
+              <div className="text-lg text-cyber-green font-mono">
+                <strong>SONG:</strong> {gameState.currentSong?.name}
               </div>
-              <div className="text-lg">
-                <strong>Album:</strong> {gameState.currentSong?.albumName}
+              <div className="text-lg text-cyber-green font-mono">
+                <strong>ALBUM:</strong> {gameState.currentSong?.albumName}
               </div>
             </div>
           </div>
 
           {/* Your Answer */}
           {myResult && (
-            <div className="bg-white/10 border border-white/20 rounded-xl p-4">
-              <h3 className="font-semibold mb-3">Your Answer:</h3>
+            <div className="holo-card neon-border-cyan rounded-xl p-4">
+              <h3 className="font-semibold mb-3 text-cyber-cyan font-mono">
+                YOUR_ANSWER:
+              </h3>
               <div className="space-y-2">
-                <div className={myResult.songCorrect ? 'text-green-400' : 'text-red-400'}>
-                  Song: {myResult.songGuess} {myResult.songCorrect ? '✓' : '✗'}
+                <div
+                  className={
+                    myResult.songCorrect ? "text-cyber-green" : "text-cyber-red"
+                  }
+                >
+                  <span className="font-mono">SONG: {myResult.songGuess} {myResult.songCorrect ? "✓" : "✗"}</span>
                 </div>
-                <div className={myResult.albumCorrect ? 'text-green-400' : 'text-red-400'}>
-                  Album: {myResult.albumGuess} {myResult.albumCorrect ? '✓' : '✗'}
+                <div
+                  className={
+                    myResult.albumCorrect ? "text-cyber-green" : "text-cyber-red"
+                  }
+                >
+                  <span className="font-mono">ALBUM: {myResult.albumGuess} {myResult.albumCorrect ? "✓" : "✗"}</span>
                 </div>
               </div>
               <div className="mt-4 text-center">
-                <div className="text-4xl font-bold text-purple-400">
-                  +{myResult.points || 0} pts
+                <div className="text-4xl font-bold text-cyber-magenta glow-magenta-text font-mono">
+                  +{myResult.points || 0} PTS
                 </div>
               </div>
             </div>
           )}
 
           {/* Total Score */}
-          <div className="bg-white/10 border border-white/20 rounded-xl p-6 text-center">
-            <h3 className="text-sm text-gray-400 mb-2">Your Total Score</h3>
-            <div className="text-5xl font-bold text-purple-400">{myPlayer?.score || 0}</div>
+          <div className="holo-card neon-border-magenta rounded-xl p-6 text-center">
+            <h3 className="text-sm text-cyber-magenta/70 mb-2 font-mono">YOUR_TOTAL_SCORE:</h3>
+            <div className="text-5xl font-bold text-cyber-magenta glow-magenta-text font-mono">
+              {myPlayer?.score || 0}
+            </div>
           </div>
 
-          <p className="text-center text-sm text-gray-400">Waiting for next round...</p>
+          <p className="text-center text-sm text-cyber-cyan/50 font-mono animate-pulse">
+            WAITING_FOR_NEXT_ROUND...
+          </p>
         </div>
       </div>
     );
   }
 
   // Finished (winner)
-  if (gameState?.phase === 'finished') {
-    const myPosition = [...gameState.players]
-      .sort((a, b) => b.score - a.score)
-      .findIndex((p) => p.name === playerName) + 1;
+  if (gameState?.phase === "finished") {
+    const myPosition =
+      [...gameState.players]
+        .sort((a, b) => b.score - a.score)
+        .findIndex((p) => p.name === playerName) + 1;
 
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center space-y-6">
           <div className="text-6xl mb-4">
-            {myPosition === 1 ? '🏆' : myPosition === 2 ? '🥈' : myPosition === 3 ? '🥉' : '🎮'}
+            {myPosition === 1 ? (
+              <span className="glow-green-text">◆ VICTORY ◆</span>
+            ) : myPosition === 2 ? (
+              <span className="glow-cyan-text">◇ 2ND ◇</span>
+            ) : myPosition === 3 ? (
+              <span className="glow-magenta-text">◇ 3RD ◇</span>
+            ) : (
+              <span className="text-cyber-cyan/50">●</span>
+            )}
           </div>
 
           {myPosition === 1 ? (
             <>
-              <h2 className="text-5xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
-                You Won!
+              <h2 className="text-5xl font-bold bg-gradient-to-r from-cyber-green via-cyber-cyan to-cyber-magenta bg-clip-text text-transparent glow-green-text font-mono animate-neon-pulse">
+                YOU_WON!
               </h2>
-              <div className="text-3xl font-bold text-purple-400">{myPlayer?.score} points</div>
+              <div className="text-3xl font-bold text-cyber-magenta glow-magenta-text font-mono">
+                [ {myPlayer?.score} POINTS ]
+              </div>
             </>
           ) : (
             <>
-              <h2 className="text-4xl font-bold">Game Over!</h2>
-              <div className="text-2xl text-gray-300">
-                You finished in <span className="text-purple-400 font-bold">#{myPosition}</span>
+              <h2 className="text-4xl font-bold text-cyber-cyan font-mono">
+                GAME_OVER
+              </h2>
+              <div className="text-2xl text-cyber-cyan/80 font-mono">
+                YOU_FINISHED:{" "}
+                <span className="text-cyber-magenta font-bold glow-magenta-text">
+                  #{myPosition}
+                </span>
               </div>
-              <div className="text-3xl font-bold text-purple-400">{myPlayer?.score} points</div>
+              <div className="text-3xl font-bold text-cyber-magenta glow-magenta-text font-mono">
+                [ {myPlayer?.score} POINTS ]
+              </div>
             </>
           )}
 
           {/* Final Standings */}
-          <div className="bg-white/10 border border-white/20 rounded-xl p-6">
-            <h3 className="text-xl font-semibold mb-4">Final Standings</h3>
+          <div className="holo-card neon-border-cyan rounded-xl p-6">
+            <h3 className="text-xl font-semibold mb-4 text-cyber-cyan font-mono">
+              [ FINAL_STANDINGS ]
+            </h3>
             <div className="space-y-2">
               {[...gameState.players]
                 .sort((a, b) => b.score - a.score)
                 .map((player, index) => (
                   <div
                     key={player.id}
-                    className={`flex items-center justify-between px-4 py-3 rounded-lg ${
+                    className={`flex items-center justify-between px-4 py-3 rounded-lg font-mono ${
                       player.name === playerName
-                        ? 'bg-purple-500/30 border border-purple-500/50'
-                        : 'bg-white/5'
+                        ? "bg-cyber-cyan/30 neon-border-cyan glow-cyan"
+                        : "bg-dark-space/50 neon-border-cyan"
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-xl">
-                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`}
+                        {index === 0 ? (
+                          <span className="text-cyber-green glow-green-text">▲</span>
+                        ) : index === 1 ? (
+                          <span className="text-cyber-cyan glow-cyan-text">▲</span>
+                        ) : index === 2 ? (
+                          <span className="text-cyber-magenta glow-magenta-text">▲</span>
+                        ) : (
+                          <span className="text-cyber-cyan/50">{index + 1}</span>
+                        )}
                       </span>
-                      <span className="font-semibold">
-                        {player.name} {player.name === playerName && '(You)'}
+                      <span className="font-semibold text-cyber-cyan">
+                        {player.name.toUpperCase()} {player.name === playerName && "[YOU]"}
                       </span>
                     </div>
-                    <span className="text-xl font-bold">{player.score}</span>
+                    <span className="text-xl font-bold text-cyber-magenta">{player.score}</span>
                   </div>
                 ))}
             </div>
@@ -395,8 +495,12 @@ export default function PlayerPage({ gameCode }: PlayerPageProps) {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="text-center">
-        <div className="text-4xl mb-4 animate-spin">⏳</div>
-        <p className="text-gray-400">Loading game...</p>
+        <div className="waveform mb-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="waveform-bar" />
+          ))}
+        </div>
+        <p className="text-cyber-cyan/70 font-mono">LOADING_GAME...</p>
       </div>
     </div>
   );

@@ -11,6 +11,22 @@ export default {
         sm: ".1875rem", /* 3px */
       },
       colors: {
+        // Cyberpunk colors
+        cyber: {
+          cyan: "#00f3ff",
+          blue: "#0066ff",
+          magenta: "#ff0080",
+          purple: "#b026ff",
+          green: "#39ff14",
+          red: "#ff0040",
+          orange: "#ffaa00",
+        },
+        dark: {
+          void: "#000000",
+          navy: "#0a0a1a",
+          space: "#0f0f23",
+          midnight: "#050510",
+        },
         // Flat / base colors (regular buttons)
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",
@@ -96,10 +112,39 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "neon-pulse": {
+          "0%, 100%": {
+            boxShadow: "0 0 10px currentColor, 0 0 20px currentColor",
+            opacity: "1",
+          },
+          "50%": {
+            boxShadow: "0 0 20px currentColor, 0 0 40px currentColor",
+            opacity: "0.8",
+          },
+        },
+        "scan-line": {
+          "0%": { transform: "translateY(-100%)" },
+          "100%": { transform: "translateY(100vh)" },
+        },
+        "grid-flicker": {
+          "0%, 100%": { opacity: "0.3" },
+          "50%": { opacity: "0.1" },
+        },
+        "text-glitch": {
+          "0%": { textShadow: "2px 2px #00f3ff, -2px -2px #ff0080" },
+          "25%": { textShadow: "-2px 2px #ff0080, 2px -2px #00f3ff" },
+          "50%": { textShadow: "2px -2px #00f3ff, -2px 2px #ff0080" },
+          "75%": { textShadow: "-2px -2px #ff0080, 2px 2px #00f3ff" },
+          "100%": { textShadow: "2px 2px #00f3ff, -2px -2px #ff0080" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "neon-pulse": "neon-pulse 2s ease-in-out infinite",
+        "scan-line": "scan-line 8s linear infinite",
+        "grid-flicker": "grid-flicker 3s ease-in-out infinite",
+        "text-glitch": "text-glitch 0.3s ease-in-out",
       },
     },
   },

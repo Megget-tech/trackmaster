@@ -2,12 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
-/* TrackMaster Global Styles */
+/* TrackMaster Global Styles - Cyberpunk Theme */
 
 :root {
-  --primary: #8b5cf6;
-  --secondary: #ec4899;
-  --accent: #10b981;
+  /* Cyberpunk colors */
+  --cyber-cyan: #00f3ff;
+  --cyber-blue: #0066ff;
+  --cyber-magenta: #ff0080;
+  --cyber-purple: #b026ff;
+  --cyber-green: #39ff14;
+  --cyber-red: #ff0040;
+  --cyber-orange: #ffaa00;
+
+  /* Dark backgrounds */
+  --dark-void: #000000;
+  --dark-navy: #0a0a1a;
+  --dark-space: #0f0f23;
+  --dark-midnight: #050510;
+
+  /* Glow effects */
+  --glow-cyan: 0 0 10px rgba(0, 243, 255, 0.5), 0 0 20px rgba(0, 243, 255, 0.3);
+  --glow-magenta: 0 0 10px rgba(255, 0, 128, 0.5), 0 0 20px rgba(255, 0, 128, 0.3);
+  --glow-green: 0 0 10px rgba(57, 255, 20, 0.5), 0 0 20px rgba(57, 255, 20, 0.3);
+  --glow-orange: 0 0 10px rgba(255, 170, 0, 0.5), 0 0 20px rgba(255, 170, 0, 0.3);
 }
 
 body {
@@ -17,30 +34,214 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+  background: radial-gradient(ellipse at top, #0f0f23 0%, #000000 50%, #050510 100%);
   min-height: 100vh;
   color: white;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Grid overlay effect */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 1;
+  animation: grid-flicker 3s ease-in-out infinite;
+}
+
+/* Scanline effect */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(0, 243, 255, 0.5) 50%,
+    transparent 100%);
+  pointer-events: none;
+  z-index: 2;
+  animation: scan-line 8s linear infinite;
 }
 
 #root {
   min-height: 100vh;
+  position: relative;
+  z-index: 3;
 }
 
-/* Custom scrollbar */
+/* Utility classes for glow effects */
+.glow-cyan {
+  box-shadow: var(--glow-cyan);
+}
+
+.glow-cyan-text {
+  color: var(--cyber-cyan);
+  text-shadow: 0 0 10px rgba(0, 243, 255, 0.5), 0 0 20px rgba(0, 243, 255, 0.3);
+}
+
+.glow-magenta {
+  box-shadow: var(--glow-magenta);
+}
+
+.glow-magenta-text {
+  color: var(--cyber-magenta);
+  text-shadow: 0 0 10px rgba(255, 0, 128, 0.5), 0 0 20px rgba(255, 0, 128, 0.3);
+}
+
+.glow-green {
+  box-shadow: var(--glow-green);
+}
+
+.glow-green-text {
+  color: var(--cyber-green);
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.5), 0 0 20px rgba(57, 255, 20, 0.3);
+}
+
+.glow-orange-text {
+  color: var(--cyber-orange);
+  text-shadow: 0 0 10px rgba(255, 170, 0, 0.5), 0 0 20px rgba(255, 170, 0, 0.3);
+}
+
+/* Neon border effect */
+.neon-border-cyan {
+  border: 2px solid var(--cyber-cyan);
+  box-shadow:
+    0 0 5px rgba(0, 243, 255, 0.5),
+    inset 0 0 5px rgba(0, 243, 255, 0.3);
+}
+
+.neon-border-magenta {
+  border: 2px solid var(--cyber-magenta);
+  box-shadow:
+    0 0 5px rgba(255, 0, 128, 0.5),
+    inset 0 0 5px rgba(255, 0, 128, 0.3);
+}
+
+/* Holographic card effect */
+.holo-card {
+  background: linear-gradient(135deg,
+    rgba(0, 243, 255, 0.1) 0%,
+    rgba(255, 0, 128, 0.05) 50%,
+    rgba(176, 38, 255, 0.1) 100%);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 243, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.holo-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(0, 243, 255, 0.1) 50%,
+    transparent 70%
+  );
+  transform: rotate(45deg);
+  animation: holo-shine 3s linear infinite;
+}
+
+@keyframes holo-shine {
+  0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+/* Custom scrollbar with neon styling */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
+  background: var(--dark-navy);
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  background: var(--dark-void);
+  border: 1px solid rgba(0, 243, 255, 0.2);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
+  background: linear-gradient(180deg, var(--cyber-cyan), var(--cyber-magenta));
+  border-radius: 5px;
+  box-shadow: 0 0 5px rgba(0, 243, 255, 0.5);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.8);
+}
+
+/* Waveform visualization */
+.waveform {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 40px;
+}
+
+.waveform-bar {
+  width: 3px;
+  background: linear-gradient(180deg, var(--cyber-cyan), var(--cyber-magenta));
+  animation: waveform-pulse 0.8s ease-in-out infinite;
+  box-shadow: 0 0 5px rgba(0, 243, 255, 0.5);
+}
+
+.waveform-bar:nth-child(2) { animation-delay: 0.1s; }
+.waveform-bar:nth-child(3) { animation-delay: 0.2s; }
+.waveform-bar:nth-child(4) { animation-delay: 0.3s; }
+.waveform-bar:nth-child(5) { animation-delay: 0.4s; }
+.waveform-bar:nth-child(6) { animation-delay: 0.5s; }
+.waveform-bar:nth-child(7) { animation-delay: 0.6s; }
+.waveform-bar:nth-child(8) { animation-delay: 0.7s; }
+
+@keyframes waveform-pulse {
+  0%, 100% { height: 10px; }
+  50% { height: 40px; }
+}
+
+/* Mobile optimizations for glow effects */
+@media (max-width: 768px) {
+  .glow-cyan,
+  .glow-magenta,
+  .glow-green {
+    box-shadow: 0 0 5px currentColor, 0 0 10px currentColor;
+  }
+
+  .waveform {
+    height: 30px;
+  }
+
+  .waveform-bar {
+    width: 2px;
+  }
+
+  @keyframes waveform-pulse {
+    0%, 100% { height: 8px; }
+    50% { height: 30px; }
+  }
+}
+
+/* Accessibility: Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
